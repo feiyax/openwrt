@@ -6,5 +6,4 @@ src-git telephony https://git.openwrt.org/feed/telephony.git
 #src-git targets https://github.com/openwrt/targets.git
 #src-git oldpackages http://git.openwrt.org/packages.git
 #src-link custom /usr/src/openwrt/custom-feed
-src-git pyther https://github.com/pyther/openwrt-feed.git
-
+src-git eapp https://github.com/feiyax/openwrt-feed.git^de62689426253f447e653330d28751fb9366e77e
