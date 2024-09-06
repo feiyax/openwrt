@@ -1,0 +1,58 @@
+#!/bin/sh /etc/rc.common
+#
+
+START=25
+USE_PROCD=1
+
+PROG="/usr/bin/goeap_proxy"
+
+boot()
+{
+    config_load goeap_proxy
+    config_get wan global wan
+    config_get router global router
+    ubus -t 30 wait_for "network.interface.${wan}" "network.interface.${router}"
+    rc_procd start_service
+}
+
+start_service()
+{
+    config_load goeap_proxy
+    config_get disabled global disabled
+
+    if [ "$disabled" = "1" ]; then
+        echo "goeap_proxy disabled"
+    else
+        config_get wan global wan
+        config_get router global router
+        config_get_bool ignore_logoff global 'ignore_logoff' '0'
+
+        local if_wan=$(uci get "network.${wan}.device")
+        [ ! -z "${if_wan}" ] || if_wan=$(uci get "network.${wan}.ifname")
+        [ ! -z "${if_wan}" ] || ( echo "no wan device name found"; return 1 )
+
+        local if_router=$(uci get "network.${router}.device")
+        [ ! -z "${if_router}" ] || if_router=$(uci get "network.${router}.ifname")
+        [ ! -z "${if_router}" ] || ( echo "no router device name found"; return 2 )
+
+        procd_open_instance
+        # attempt to restart every 30 seconds, the eap proxy for internet connectivity
+        procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-30} ${respawn_retry:-0}
+        procd_set_param stdout 1
+        procd_set_param stderr 1
+        procd_set_param command $PROG
+        procd_append_param command "${if_wan}"
+        procd_append_param command "${if_router}"
+        if [ $ignore_logoff != "0" ]; then
+            procd_append_param command -ignore-logoff
+        fi
+    fi
+
+    procd_close_instance
+}
+
+service_triggers()
+{
+    procd_add_reload_trigger "goeap_proxy" "network"
+}
+
